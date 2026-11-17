@@ -18,9 +18,10 @@ const generateToken = (userId) => {
 // Register User
 export const registerUser = async (req, res) => {
     try {
+        // Get registration details from frontend
         const { name, email, password, companyName } = req.body;
 
-        // Validate fields
+        // Check if all fields are provided
         if (!name || !email || !password || !companyName) {
             return res.status(400).json({
                 success: false,
@@ -28,9 +29,12 @@ export const registerUser = async (req, res) => {
             });
         }
 
-        // Check existing user
+        // Normalize email before checking database
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Check whether email is already registered
         const existingUser = await User.findOne({
-            email: email.toLowerCase().trim()
+            email: normalizedEmail
         });
 
         if (existingUser) {
@@ -40,37 +44,35 @@ export const registerUser = async (req, res) => {
             });
         }
 
-        // Hash password
+        // Hash password before storing it in MongoDB
         const hashedPassword = await bcrypt.hash(password, 12);
 
+        // Generate IDs before creating either document
+        // This solves the circular reference between User and Tenant
         const tenantId = new mongoose.Types.ObjectId();
         const userId = new mongoose.Types.ObjectId();
 
-        // Create Tenant
+        // Create Tenant with the future owner's User ID
         const tenant = await Tenant.create({
-            companyName,
             _id: tenantId,
+            companyName: companyName.trim(),
             owner: userId
         });
 
-        // Create User
+        // Create User with the Tenant ID
         const user = await User.create({
             _id: userId,
-            name,
-            email,
+            name: name.trim(),
+            email: normalizedEmail,
             password: hashedPassword,
-            tenantId,
+            tenantId: tenant._id,
             role: 'owner'
         });
 
-        // Update tenant owner
-        tenant.owner = user._id;
-        await tenant.save();
-
-        // Generate token
+        // Generate JWT after successful registration
         const token = generateToken(user._id);
 
-        // Set HTTP-only cookie
+        // Store JWT in an HTTP-only cookie
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -78,6 +80,7 @@ export const registerUser = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
+        // Send successful registration response
         return res.status(201).json({
             success: true,
             message: 'Account created successfully',
@@ -103,8 +106,10 @@ export const registerUser = async (req, res) => {
 // Login User
 export const loginUser = async (req, res) => {
     try {
+        // Get email and password from frontend
         const { email, password } = req.body;
 
+        // Validate login fields
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
@@ -112,10 +117,12 @@ export const loginUser = async (req, res) => {
             });
         }
 
+        // Find user using normalized email
         const user = await User.findOne({
             email: email.toLowerCase().trim()
         });
 
+        // Check whether user exists
         if (!user) {
             return res.status(401).json({
                 success: false,
@@ -123,11 +130,13 @@ export const loginUser = async (req, res) => {
             });
         }
 
+        // Compare entered password with hashed password
         const isPasswordValid = await bcrypt.compare(
             password,
             user.password
         );
 
+        // Reject incorrect password
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
@@ -135,8 +144,10 @@ export const loginUser = async (req, res) => {
             });
         }
 
+        // Generate JWT for authenticated user
         const token = generateToken(user._id);
 
+        // Set JWT in HTTP-only cookie
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -144,6 +155,7 @@ export const loginUser = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
+        // Send successful login response
         return res.status(200).json({
             success: true,
             message: 'Login successful',
@@ -168,12 +180,15 @@ export const loginUser = async (req, res) => {
 
 // Logout User
 export const logoutUser = (req, res) => {
+
+    // Clear authentication cookie
     res.clearCookie('token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax'
     });
 
+    // Send logout response
     return res.status(200).json({
         success: true,
         message: 'Logout successful'
