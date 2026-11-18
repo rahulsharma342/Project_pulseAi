@@ -1,5 +1,7 @@
 
 import express from 'express';
+// Import PDF upload middleware
+import upload from '../middleware/upload.middleware.js';
 
 // Import authentication middleware
 import { protect } from '../middleware/auth.middleware.js';
@@ -11,7 +13,8 @@ import { attachTenant } from '../middleware/tenant.middleware.js';
 import {
     createKnowledgeSource,
     getKnowledgeSources,
-    deleteKnowledgeSource
+    deleteKnowledgeSource,
+    uploadPDFKnowledgeSource
 } from '../controllers/knowledge.controller.js';
 
 const router = express.Router();
@@ -40,6 +43,15 @@ router.delete(
     protect,                // Verify JWT token
     attachTenant,           // Identify user's company
     deleteKnowledgeSource   // Delete company's source
+);
+
+// Upload and process a PDF knowledge source
+router.post(
+    '/upload-pdf',
+    protect,
+    attachTenant,
+    upload.single('file'),
+    uploadPDFKnowledgeSource
 );
 
 export default router;

@@ -32,6 +32,11 @@ const knowledgeSourceSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    // Store extracted text from website or PDF
+content: {
+    type: String,
+    default: ''
+},
 
     // Processing status of the source
     status: {
