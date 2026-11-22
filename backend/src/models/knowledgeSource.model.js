@@ -37,6 +37,28 @@ content: {
     type: String,
     default: ''
 },
+// Store smaller text pieces generated from website or PDF content
+chunks: [
+    {
+        text: {
+            type: String,
+            required: true
+        },
+        chunkIndex: {
+            type: Number,
+            required: true
+        },
+        embedding: {
+    type: [Number],
+    default: []
+}
+    }
+],
+// Store SHA-256 hash to identify duplicate PDF content
+fileHash: {
+    type: String,
+    default: null
+},
 
     // Processing status of the source
     status: {

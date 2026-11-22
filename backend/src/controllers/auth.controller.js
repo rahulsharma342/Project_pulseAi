@@ -194,3 +194,40 @@ export const logoutUser = (req, res) => {
         message: 'Logout successful'
     });
 };
+
+// Get currently logged-in user
+export const getCurrentUser = async (req, res) => {
+    try {
+        // Find authenticated user using ID from auth middleware
+        const user = await User.findById(req.userId)
+            .select('-password');
+
+        // Check whether user exists
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Return safe user information
+        return res.status(200).json({
+            success: true,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                tenantId: user.tenantId,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error('Get Current User Error:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Unable to fetch user details'
+        });
+    }
+};
